@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Extra
 
 
@@ -39,4 +41,8 @@ class RecordSchema(BaseModel):
 
 
 class S3RecordingSchema(BaseModel):
-    recording_id: str
+    recording_id: UUID
+
+
+class Notification(BaseModel):
+    message: str

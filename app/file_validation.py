@@ -15,6 +15,8 @@ class FileValidationError(Exception):
 
 
 async def validate_file(upload_file: UploadFile):
+    _validate_file_extension(upload_file.filename)
+
     last_timestamp = 0
 
     file_object = await upload_file.read()
@@ -32,6 +34,11 @@ async def validate_file(upload_file: UploadFile):
         last_timestamp = record.timestamp
 
     await upload_file.seek(0)
+
+
+def _validate_file_extension(file_name: str):
+    if not file_name.endswith('.csv'):
+        raise FileValidationError(f'Only csv files are accepted, got {file_name}')
 
 
 def _validate_headers(headers: list[str]):
