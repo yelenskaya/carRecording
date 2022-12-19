@@ -4,7 +4,7 @@ from logging import getLogger
 
 from botocore.response import StreamingBody
 
-from app.events import send_record
+from app.events import recording_namespace
 
 logger = getLogger(__name__)
 
@@ -16,7 +16,7 @@ async def reproduce_recording(recording_id: str, file: StreamingBody):
     last_timestamp = 0
     for line in reader(lines[1:]):
         timestamp, record = line
-        await send_record(record, recording_id)
+        await recording_namespace.send_record(record, recording_id)
 
         time_difference = (int(timestamp) - last_timestamp) / 1000
         await sleep(time_difference)

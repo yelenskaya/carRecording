@@ -1,26 +1,23 @@
 from logging import getLogger
 
-from socketio import AsyncServer
+from socketio import AsyncNamespace
 
-socket_server = AsyncServer(cors_allowed_origins='*', async_mode='asgi')
 logger = getLogger(__name__)
 
 
-@socket_server.event
-async def connect(sid: str, environ: dict):
-    logger.info(f'connected {sid}')
+class CarRecordingNamespace(AsyncNamespace):
+    def on_connect(self, sid: str, environ: dict):
+        logger.info(f'connected {sid}')
+
+    def on_disconnect(self, sid: str):
+        logger.info(f'disconnected {sid}')
+
+    async def on_join(self, sid: str, room: str):
+        self.enter_room(sid, room, namespace=self.namespace)
+        logger.info(f'joined room {room}')
+
+    async def send_record(self, record: str, recording_id: str):
+        await self.emit('reproduce', data=record, room=recording_id, namespace=self.namespace)
 
 
-@socket_server.event
-async def disconnect(sid: str):
-    logger.info(f'disconnected {sid}')
-
-
-@socket_server.event
-async def join(sid: str, room: str):
-    socket_server.enter_room(sid, room)
-    logger.info(f'joined room {room}')
-
-
-async def send_record(record: str, recording_id: str):
-    await socket_server.emit('reproduce', data=record, room=recording_id)
+recording_namespace = CarRecordingNamespace('/recording')
