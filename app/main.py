@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from socketio import ASGIApp, AsyncServer
 
+from app.dependencies import get_redis
 from app.events import recording_namespace
 from app.routes import router
 
@@ -12,3 +13,8 @@ socket_app = ASGIApp(socket_server, app)
 app.mount('/ws', socket_app)
 
 socket_server.register_namespace(recording_namespace)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await get_redis().close()

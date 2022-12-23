@@ -12,6 +12,7 @@ boto3 = "^1.26.23"
 python-multipart = "^0.0.5"
 orjson = "^3.8.3"
 python-socketio = "^5.7.2"
+redis = "^4.4.0"
 
 [tool.poetry.dev-dependencies]
 factory-boy = "^3.2.1"
