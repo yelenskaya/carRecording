@@ -21,6 +21,7 @@ class RecordLockedError(Exception):
 class ReplayStatus(StrEnum):
     IN_PROGRESS = auto()
     FINISHED = auto()
+    INTERRUPTED = auto()
 
 
 def orjson_dumps(v, *, default):
@@ -55,6 +56,14 @@ class LockRecording:
         replay.status = ReplayStatus.FINISHED
 
         await self.connection.set(self.recording_id, replay.json())
+
+
+async def mark_interrupted_recordings():
+    connection = get_redis()
+    async for recording_id in connection.scan_iter(match='*'):
+        if Replay.parse_raw(await connection.get(recording_id)).status == ReplayStatus.IN_PROGRESS:
+            logger.info(f'Marking recording {recording_id} as interrupted')
+            await connection.set(recording_id, Replay(status=ReplayStatus.INTERRUPTED).json())
 
 
 async def reproduce_recording(recording_id: str, file: StreamingBody):
