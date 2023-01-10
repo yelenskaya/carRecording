@@ -1,5 +1,4 @@
 from asyncio import sleep
-from contextlib import asynccontextmanager
 from csv import reader
 from enum import auto, StrEnum
 from logging import getLogger
@@ -37,28 +36,29 @@ class Replay(BaseModel):
         json_dumps = orjson_dumps
 
 
-@asynccontextmanager
-async def lock_recording(recording_id: str):
-    connection = get_redis()
+class LockRecording:
+    def __init__(self, recording_id: str):
+        self.recording_id = recording_id
+        self.connection = get_redis()
 
-    replay = await connection.get(recording_id)
+    async def __aenter__(self):
+        replay = await self.connection.get(self.recording_id)
 
-    if replay and Replay.parse_raw(replay).status == ReplayStatus.IN_PROGRESS:
-        logger.error(f'Replay of the recording {recording_id} is in progress, cannot start a new one')
-        raise RecordLockedError('Another replay is in progress')
+        if replay and Replay.parse_raw(replay).status == ReplayStatus.IN_PROGRESS:
+            logger.error(f'Replay of the recording {self.recording_id} is in progress, cannot start a new one')
+            raise RecordLockedError('Another replay is in progress')
 
-    await connection.set(recording_id, Replay(status=ReplayStatus.IN_PROGRESS).json())
+        await self.connection.set(self.recording_id, Replay(status=ReplayStatus.IN_PROGRESS).json())
 
-    yield
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        replay = Replay.parse_raw(await self.connection.get(self.recording_id))
+        replay.status = ReplayStatus.FINISHED
 
-    replay = Replay.parse_raw(await connection.get(recording_id))
-    replay.status = ReplayStatus.FINISHED
-
-    await connection.set(recording_id, replay.json())
+        await self.connection.set(self.recording_id, replay.json())
 
 
 async def reproduce_recording(recording_id: str, file: StreamingBody):
-    async with lock_recording(recording_id):
+    async with LockRecording(recording_id):
         lines = file.read().decode('utf-8').splitlines(True)
 
         logger.info(f'Started to reproduce recording {recording_id}')
